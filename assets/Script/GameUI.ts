@@ -193,7 +193,7 @@ export default class GameUI extends cc.Component {
             const tdx = tailPoint.x - prevTailPoint.x;
             const tdy = tailPoint.y - prevTailPoint.y;
             const tLen = Math.sqrt(tdx * tdx + tdy * tdy);
-            const tailOffset = bodyLength * 0.18;
+            const tailOffset = bodyLength * 0.48;
             tailNode.active = true;
             if (tLen > 0.001) {
                 tailNode.setPosition(
