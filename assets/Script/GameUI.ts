@@ -171,7 +171,6 @@ export default class GameUI extends cc.Component {
         root.active = true;
         const mapGap = Math.max(20, this.gameManager.getMapRoundGap());
         const headSize = mapGap * 0.6;
-        const tailSize = mapGap * 0.38;
         let bodyWidth = 0;
         let bodyLength = 0;
 
@@ -181,7 +180,7 @@ export default class GameUI extends cc.Component {
         this.fitNodeSizeByScale(headNode, headSize, headSize);
         const headRenderSize = Math.max(headNode.width * Math.abs(headNode.scaleX), headNode.height * Math.abs(headNode.scaleY));
         const bodySize = headRenderSize * GameUI.BODY_TO_HEAD_SCALE;
-        bodyWidth = bodySize;
+        bodyWidth = bodySize ;
         bodyLength = bodySize;
         if (path.length >= 2) {
             headNode.angle = this.getNodeAngle(path[1], path[0]);
@@ -189,18 +188,32 @@ export default class GameUI extends cc.Component {
 
         if (path.length >= 2) {
             const tailIdx = path.length - 1;
+            const prevTailPoint = path[tailIdx - 1];
+            const tailPoint = path[tailIdx];
+            const tdx = tailPoint.x - prevTailPoint.x;
+            const tdy = tailPoint.y - prevTailPoint.y;
+            const tLen = Math.sqrt(tdx * tdx + tdy * tdy);
+            const tailOffset = bodyLength * 0.18;
             tailNode.active = true;
-            tailNode.setPosition(path[tailIdx].x, path[tailIdx].y);
+            if (tLen > 0.001) {
+                tailNode.setPosition(
+                    tailPoint.x + (tdx / tLen) * tailOffset,
+                    tailPoint.y + (tdy / tLen) * tailOffset
+                );
+            } else {
+                tailNode.setPosition(tailPoint.x, tailPoint.y);
+            }
             tailNode.zIndex = 5;
-            this.fitNodeSizeByScale(tailNode, tailSize, tailSize);
+            this.fitNodeSizeByScale(tailNode, bodyWidth, bodyLength);
             tailNode.angle = this.getNodeAngle(path[tailIdx], path[tailIdx - 1]);
         } else {
             tailNode.active = false;
         }
 
         // 身体按每段线段“均匀铺设”，保证 mapRound 点与点之间尽量连续连接
-        const bodyPlacements: Array<{ x: number; y: number; angle: number }> = [];
-        const spacing = Math.max(6, bodyLength * 0.78);
+        const bodyPlacements: Array<{ x: number; y: number; angle: number; segStep: number }> = [];
+        // 间距更紧 + 向上取整铺设，减少移动过程的身体缝隙
+        const spacing = Math.max(4, bodyLength * 0.62);
         for (let i = 0; i < path.length - 1; i++) {
             const from = path[i + 1];
             const to = path[i];
@@ -210,7 +223,7 @@ export default class GameUI extends cc.Component {
             if (segLen < 0.01) continue;
 
             const segAngle = this.getBodyAngle(from, to);
-            const countOnSeg = Math.max(1, Math.floor(segLen / spacing));
+            const countOnSeg = Math.max(1, Math.ceil(segLen / spacing));
             const step = segLen / countOnSeg;
             const ux = dx / segLen;
             const uy = dy / segLen;
@@ -220,6 +233,7 @@ export default class GameUI extends cc.Component {
                     x: from.x + ux * dist,
                     y: from.y + uy * dist,
                     angle: segAngle,
+                    segStep: step,
                 });
             }
         }
@@ -245,7 +259,8 @@ export default class GameUI extends cc.Component {
             bodyNode.setPosition(placement.x, placement.y);
             bodyNode.zIndex = 10;
             bodyNode.angle = placement.angle;
-            this.fitNodeSizeByScale(bodyNode, bodyWidth, bodyLength);
+            const renderBodyLen = Math.max(bodyLength * 1.1, placement.segStep * 1.15);
+            this.fitNodeSizeByScale(bodyNode, bodyWidth, renderBodyLen);
         }
     }
 
