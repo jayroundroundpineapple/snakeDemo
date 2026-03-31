@@ -4987,6 +4987,9 @@
       "__id__": 2
     },
     "_enabled": true,
+    "cornerPre": {
+      "__uuid__": "8af9224c-42da-4241-b328-dfb7a4b01ae4"
+    },
     "snakePreArr": [
       {
         "__uuid__": "1e894254-85a1-4878-8dd8-ab5ab10f609d"

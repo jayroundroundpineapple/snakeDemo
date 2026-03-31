@@ -11,6 +11,8 @@ const { ccclass, property } = cc._decorator;
 @ccclass
 export default class GameUI extends cc.Component {
     @property(cc.Prefab)
+    private cornerPre: cc.Prefab = null
+    @property(cc.Prefab)
     private snakePreArr: cc.Prefab[] = []
     private static readonly BODY_TO_HEAD_SCALE: number = 0.634;
     @property(cc.Node)
@@ -46,6 +48,7 @@ export default class GameUI extends cc.Component {
     private snakeHeadNodes: cc.Node[] = []
     private snakeTailNodes: cc.Node[] = []
     private snakeBodyNodes: cc.Node[][] = []
+    private snakeCornerNodes: cc.Node[][] = []
 
     /** 引导步骤：0=等绿(2), 1=等蓝(1), 2=等黄(0) */
     private _guideStep: number = 0;
@@ -128,6 +131,7 @@ export default class GameUI extends cc.Component {
             this.snakeHeadNodes[i] = head;
             this.snakeTailNodes[i] = tail;
             this.snakeBodyNodes[i] = [];
+            this.snakeCornerNodes[i] = [];
         }
     }
 
@@ -142,6 +146,7 @@ export default class GameUI extends cc.Component {
         this.snakeHeadNodes = [];
         this.snakeTailNodes = [];
         this.snakeBodyNodes = [];
+        this.snakeCornerNodes = [];
     }
 
     private createSnakePartNode(name: string, prefab: cc.Prefab): cc.Node {
@@ -162,6 +167,7 @@ export default class GameUI extends cc.Component {
         const headNode = this.snakeHeadNodes[pathIdx];
         const tailNode = this.snakeTailNodes[pathIdx];
         const bodyNodes = this.snakeBodyNodes[pathIdx] || [];
+        const cornerNodes = this.snakeCornerNodes[pathIdx] || [];
         if (!root || !headNode || !tailNode) return;
 
         if (!path || path.length === 0 || this.gameManager.isPathLeftMap(pathIdx)) {
@@ -261,6 +267,64 @@ export default class GameUI extends cc.Component {
             bodyNode.angle = placement.angle;
             const renderBodyLen = Math.max(bodyLength * 1.1, placement.segStep * 1.15);
             this.fitNodeSizeByScale(bodyNode, bodyWidth, renderBodyLen);
+        }
+
+        // 转弯补角：使用 cornerPre 预制体
+        const cornerPlacements: Array<{ x: number; y: number; angle: number }> = [];
+        for (let i = 1; i < path.length - 1; i++) {
+            const prev = path[i - 1];
+            const curr = path[i];
+            const next = path[i + 1];
+
+            const inX = prev.x - curr.x;
+            const inY = prev.y - curr.y;
+            const outX = next.x - curr.x;
+            const outY = next.y - curr.y;
+            const inLen = Math.sqrt(inX * inX + inY * inY);
+            const outLen = Math.sqrt(outX * outX + outY * outY);
+            if (inLen < 0.001 || outLen < 0.001) continue;
+
+            const ninX = inX / inLen;
+            const ninY = inY / inLen;
+            const noutX = outX / outLen;
+            const noutY = outY / outLen;
+            const dot = ninX * noutX + ninY * noutY;
+            const cross = ninX * noutY - ninY * noutX;
+            // 仅在真实拐角补点：直线(反向共线)或几乎不转向时跳过
+            if (dot < -0.995 || Math.abs(cross) < 0.3) continue;
+
+            const bisX = ninX + noutX;
+            const bisY = ninY + noutY;
+            const angle = (Math.abs(bisX) + Math.abs(bisY) > 0.001)
+                ? this.getBodyAngle({ x: 0, y: 0 }, { x: bisX, y: bisY })
+                : this.getBodyAngle(prev, next);
+            cornerPlacements.push({ x: curr.x, y: curr.y, angle });
+        }
+
+        const cornerCountNeeded = this.cornerPre ? cornerPlacements.length : 0;
+        while (cornerNodes.length < cornerCountNeeded) {
+            const cornerNode = this.createSnakePartNode(`SnakeCorner_${pathIdx}_${cornerNodes.length}`, this.cornerPre);
+            cornerNode.parent = root;
+            cornerNodes.push(cornerNode);
+        }
+        while (cornerNodes.length > cornerCountNeeded) {
+            const cornerNode = cornerNodes.pop();
+            if (cornerNode && cornerNode.isValid) {
+                cornerNode.destroy();
+            }
+        }
+        this.snakeCornerNodes[pathIdx] = cornerNodes;
+
+        // cornerPre 适配：比身体稍大一点，避免拐角漏白
+        const cornerSize = Math.max(bodyWidth, bodyLength) * 1.09;
+        for (let i = 0; i < cornerNodes.length; i++) {
+            const cornerNode = cornerNodes[i];
+            const placement = cornerPlacements[i];
+            cornerNode.active = true;
+            cornerNode.setPosition(placement.x, placement.y);
+            cornerNode.zIndex = 11;
+            cornerNode.angle = placement.angle;
+            this.fitNodeSizeByScale(cornerNode, cornerSize, cornerSize);
         }
     }
 
