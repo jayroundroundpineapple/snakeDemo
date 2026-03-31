@@ -10,8 +10,9 @@ const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class GameUI extends cc.Component {
-    @property(cc.SpriteFrame)
-    private snakeSpriteArr:cc.SpriteFrame[] = [];
+    @property(cc.Prefab)
+    private snakePreArr: cc.Prefab[] = []
+    private static readonly BODY_TO_HEAD_SCALE: number = 0.634;
     @property(cc.Node)
     private finger3:cc.Node = null;
     @property(cc.Node)
@@ -118,8 +119,8 @@ export default class GameUI extends cc.Component {
             root.parent = this.graphicContainer;
             root.setPosition(0, 0);
 
-            const head = this.createSnakePartNode(`SnakeHead_${i}`, this.snakeSpriteArr[0]);
-            const tail = this.createSnakePartNode(`SnakeTail_${i}`, this.snakeSpriteArr[2]);
+            const head = this.createSnakePartNode(`SnakeHead_${i}`, this.snakePreArr[0]);
+            const tail = this.createSnakePartNode(`SnakeTail_${i}`, this.snakePreArr[2]);
             head.parent = root;
             tail.parent = root;
 
@@ -143,10 +144,9 @@ export default class GameUI extends cc.Component {
         this.snakeBodyNodes = [];
     }
 
-    private createSnakePartNode(name: string, spriteFrame: cc.SpriteFrame): cc.Node {
-        const node = new cc.Node(name);
-        const sp = node.addComponent(cc.Sprite);
-        sp.spriteFrame = spriteFrame || null;
+    private createSnakePartNode(name: string, prefab: cc.Prefab): cc.Node {
+        const node = prefab ? cc.instantiate(prefab) : new cc.Node();
+        node.name = name;
         return node;
     }
 
@@ -172,13 +172,17 @@ export default class GameUI extends cc.Component {
         const mapGap = Math.max(20, this.gameManager.getMapRoundGap());
         const headSize = mapGap * 0.6;
         const tailSize = mapGap * 0.38;
-        const bodyWidth = mapGap * 0.52;
-        const bodyLength = mapGap * 0.56;
+        let bodyWidth = 0;
+        let bodyLength = 0;
 
         headNode.active = true;
         headNode.setPosition(path[0].x, path[0].y);
         headNode.zIndex = 30;
-        this.fitNodeSizeBySprite(headNode, headSize, headSize);
+        this.fitNodeSizeByScale(headNode, headSize, headSize);
+        const headRenderSize = Math.max(headNode.width * Math.abs(headNode.scaleX), headNode.height * Math.abs(headNode.scaleY));
+        const bodySize = headRenderSize * GameUI.BODY_TO_HEAD_SCALE;
+        bodyWidth = bodySize;
+        bodyLength = bodySize;
         if (path.length >= 2) {
             headNode.angle = this.getNodeAngle(path[1], path[0]);
         }
@@ -188,7 +192,7 @@ export default class GameUI extends cc.Component {
             tailNode.active = true;
             tailNode.setPosition(path[tailIdx].x, path[tailIdx].y);
             tailNode.zIndex = 5;
-            this.fitNodeSizeBySprite(tailNode, tailSize, tailSize);
+            this.fitNodeSizeByScale(tailNode, tailSize, tailSize);
             tailNode.angle = this.getNodeAngle(path[tailIdx], path[tailIdx - 1]);
         } else {
             tailNode.active = false;
@@ -222,7 +226,7 @@ export default class GameUI extends cc.Component {
 
         const bodyCountNeeded = bodyPlacements.length;
         while (bodyNodes.length < bodyCountNeeded) {
-            const body = this.createSnakePartNode(`SnakeBody_${pathIdx}_${bodyNodes.length}`, this.snakeSpriteArr[1]);
+            const body = this.createSnakePartNode(`SnakeBody_${pathIdx}_${bodyNodes.length}`, this.snakePreArr[1]);
             body.parent = root;
             bodyNodes.push(body);
         }
@@ -241,29 +245,26 @@ export default class GameUI extends cc.Component {
             bodyNode.setPosition(placement.x, placement.y);
             bodyNode.zIndex = 10;
             bodyNode.angle = placement.angle;
-            this.fitNodeSizeBySprite(bodyNode, bodyWidth, bodyLength);
+            this.fitNodeSizeByScale(bodyNode, bodyWidth, bodyLength);
         }
     }
 
-    private fitNodeSizeBySprite(node: cc.Node, targetW: number, targetH: number): void {
-        const sp = node.getComponent(cc.Sprite);
-        const sf = sp && sp.spriteFrame ? sp.spriteFrame : null;
-        if (!sf) {
-            node.setContentSize(targetW, targetH);
-            return;
-        }
-        const rect = sf.getRect();
-        const srcW = Math.max(1, rect.width);
-        const srcH = Math.max(1, rect.height);
+    private fitNodeSizeByScale(node: cc.Node, targetW: number, targetH: number): void {
+        const srcW = Math.max(1, node.width);
+        const srcH = Math.max(1, node.height);
         const srcRatio = srcW / srcH;
         const targetRatio = targetW / Math.max(1, targetH);
+        let finalW = targetW;
+        let finalH = targetH;
         if (srcRatio > targetRatio) {
-            node.width = targetW;
-            node.height = targetW / srcRatio;
+            finalW = targetW;
+            finalH = targetW / srcRatio;
         } else {
-            node.height = targetH;
-            node.width = targetH * srcRatio;
+            finalH = targetH;
+            finalW = targetH * srcRatio;
         }
+        node.scaleX = finalW / srcW;
+        node.scaleY = finalH / srcH;
     }
 
     private getNodeAngle(from: { x: number; y: number }, to: { x: number; y: number }): number {
