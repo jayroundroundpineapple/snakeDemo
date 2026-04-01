@@ -20,6 +20,7 @@ export default class GameUI extends cc.Component {
     @property(cc.Prefab)
     private snakePreArr: cc.Prefab[] = []
     private static readonly BODY_TO_HEAD_SCALE: number = 0.634;
+    private static readonly HEAD_SIZE_RATIO: number = 0.85;
     @property(cc.Node)
     private finger3:cc.Node = null;
     @property(cc.Node)
@@ -30,8 +31,6 @@ export default class GameUI extends cc.Component {
     private mapRoundPre: cc.Prefab = null
     @property(cc.Node)
     private graphicContainer:cc.Node = null
-    @property(cc.Prefab)
-    private graphicsPre: cc.Prefab = null
     @property(cc.Node)
     private mapNode: cc.Node = null
     @property(cc.Node)
@@ -63,6 +62,12 @@ export default class GameUI extends cc.Component {
         this.gameModel = new GameModel()
         this.gameModel.mGame = this
         this.gameManager = new GameManager()
+        this.gameManager.setOnBlockedFeedbackHit((pathIdx: number) => {
+            this.snakeHeadNodes[pathIdx]?.getComponent(SnakeHead)?.playErrorAnimation();
+        });
+        this.gameManager.setOnBlockedFeedbackEnd((pathIdx: number) => {
+            this.snakeHeadNodes[pathIdx]?.getComponent(SnakeHead)?.stopErrorAnimation();
+        });
     }
     protected start(): void {
         PlayerAdSdk.init();
@@ -89,20 +94,33 @@ export default class GameUI extends cc.Component {
         this.resize()
     }
 
-    /** 注册触摸：只有当前引导步骤对应的路径才响应点击 */
+    /** 注册触摸：任意蛇可点；被绿蛇规则挡住时先撞到阻挡点再播蛇头 error 动画 */
     private setupTouchInput(): void {
         this.graphicContainer.on(cc.Node.EventType.TOUCH_START, (event: cc.Event.EventTouch) => {
             const loc = event.getLocation();
             const pathIdx = this.gameManager.getPathIndexAtPoint(loc.x, loc.y);
-            const expected = this._guidePathOrder[this._guideStep];
-            if (pathIdx === expected && !this.gameManager.isPathMoving(expected) && !this.gameManager.isPathLeftMap(expected)) {
-                [this.finger, this.finger2, this.finger3][this._guideStep].active = false;
-                this.gameManager.setPathMoving(pathIdx, true);
+            if (pathIdx < 0) return;
+            if (this.gameManager.isPathLeftMap(pathIdx)) return;
+            if (this.gameManager.isPathMoving(pathIdx)) return;
+            if (this.gameManager.isBlockedFeedbackPlaying()) return;
+
+            if (this.gameManager.isPathBlockedByGreenRule(pathIdx)) {
+                this.gameManager.playBlockedFeedback(pathIdx);
+                return;
             }
+
+            if (this.gameManager.isGreenPathIndex(pathIdx)) {
+                this.gameManager.markGreenPathClicked();
+            }
+            if (pathIdx === this._guidePathOrder[this._guideStep]) {
+                [this.finger, this.finger2, this.finger3][this._guideStep].active = false;
+            }
+            this.gameManager.setPathMoving(pathIdx, true);
         }, this);
     }
 
     protected update(_dt: number): void {
+        this.gameManager.tickBlockedFeedback(_dt);
         const count = this.gameManager.getPathCount();
         for (let i = 0; i < count; i++) {
             if (this.gameManager.isPathMoving(i)) {
@@ -181,7 +199,7 @@ export default class GameUI extends cc.Component {
         }
         root.active = true;
         const mapGap = Math.max(20, this.gameManager.getMapRoundGap());
-        const headSize = mapGap * 0.6;
+        const headSize = mapGap * GameUI.HEAD_SIZE_RATIO;
         let bodyWidth = 0;
         let bodyLength = 0;
 
@@ -321,7 +339,7 @@ export default class GameUI extends cc.Component {
         this.snakeCornerNodes[pathIdx] = cornerNodes;
 
         // cornerPre 适配：比身体稍大一点，避免拐角漏白
-        const cornerSize = Math.max(bodyWidth, bodyLength) * 1.09;
+        const cornerSize = Math.max(bodyWidth, bodyLength) * 0.95;
         for (let i = 0; i < cornerNodes.length; i++) {
             const cornerNode = cornerNodes[i];
             const placement = cornerPlacements[i];
@@ -452,6 +470,7 @@ export default class GameUI extends cc.Component {
         PlayerAdSdk.jumpStore()
     }
     protected onDisable(): void {
-
+        this.gameManager.setOnBlockedFeedbackHit(null);
+        this.gameManager.setOnBlockedFeedbackEnd(null);
     }
 }   

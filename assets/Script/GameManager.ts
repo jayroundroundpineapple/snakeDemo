@@ -68,6 +68,11 @@ export default class GameManager extends cc.Component {
 
     /** 绘制时临时覆盖颜色（阻挡反馈用） */
     private _pathColorOverride: Map<number, cc.Color> = new Map();
+
+    /** 黄/蓝撞到绿色阻挡点瞬间回调（用于蛇头 error 动画等） */
+    private _onBlockedFeedbackHit: ((pathIdx: number) => void) | null = null;
+    /** 黄/蓝阻挡反馈结束（回到原位）回调 */
+    private _onBlockedFeedbackEnd: ((pathIdx: number) => void) | null = null;
     private _performanceLevel: number = GameManager.PerformanceLevel.HIGH;
     private _moveSpeedRatio: number = 1;
     private _pathLineWidth: number = 15;
@@ -530,6 +535,22 @@ export default class GameManager extends cc.Component {
         return this._blockedFeedback !== null;
     }
 
+    public setOnBlockedFeedbackHit(cb: ((pathIdx: number) => void) | null): void {
+        this._onBlockedFeedbackHit = cb;
+    }
+
+    public setOnBlockedFeedbackEnd(cb: ((pathIdx: number) => void) | null): void {
+        this._onBlockedFeedbackEnd = cb;
+    }
+
+    /**
+     * 当前点击规则下是否被挡住：黄/蓝在未点过绿蛇前，会被绿蛇路径挡住
+     */
+    public isPathBlockedByGreenRule(pathIdx: number): boolean {
+        if (this._pathLeftMap.get(pathIdx)) return false;
+        return this.isYellowOrBluePath(pathIdx) && !this._greenPathUnlocked;
+    }
+
     /**
      * 黄/蓝在未点绿时点击：箭头变红，头部沿前进方向撞到绿色路径后再回到原位
      */
@@ -585,6 +606,10 @@ export default class GameManager extends cc.Component {
             path[0].y = f.sy + (f.hy - f.sy) * e;
             this.refreshPathGraphicsWithColor(f.pathIdx, this._blockedRedColor);
             if (p >= 1) {
+                const hitCb = this._onBlockedFeedbackHit;
+                if (hitCb) {
+                    hitCb(f.pathIdx);
+                }
                 f.phase = "back";
                 f.elapsed = 0;
             }
@@ -605,6 +630,10 @@ export default class GameManager extends cc.Component {
             const idx = this._blockedFeedback.pathIdx;
             this._pathColorOverride.delete(idx);
             this.refreshPathGraphics(idx);
+            const endCb = this._onBlockedFeedbackEnd;
+            if (endCb) {
+                endCb(idx);
+            }
         }
         this._blockedFeedback = null;
     }
