@@ -22,10 +22,6 @@ export default class GameUI extends cc.Component {
     private static readonly BODY_TO_HEAD_SCALE: number = 0.634;
     private static readonly HEAD_SIZE_RATIO: number = 0.85;
     @property(cc.Node)
-    private finger3:cc.Node = null;
-    @property(cc.Node)
-    private finger2:cc.Node = null
-    @property(cc.Node)
     private finger: cc.Node = null;
     @property(cc.Prefab)
     private mapRoundPre: cc.Prefab = null
@@ -41,6 +37,8 @@ export default class GameUI extends cc.Component {
     private maskNode: cc.Node = null
     @property(cc.Node)
     private resultNode: cc.Node = null
+    @property(cc.Node)
+    private failUI: cc.Node = null
 
     private bgmAudioFlag: boolean = true
     private canPlayMusic: boolean = false
@@ -54,10 +52,12 @@ export default class GameUI extends cc.Component {
     private snakeBodyNodes: cc.Node[][] = []
     private snakeCornerNodes: cc.Node[][] = []
 
-    /** 引导步骤：0=等绿(2), 1=等蓝(1), 2=等黄(0) */
+    /** 引导步骤：0=等点击2，1=等点击0，2=完成 */
     private _guideStep: number = 0;
     /** 每步对应的路径索引 */
-    private readonly _guidePathOrder: number[] = [2, 1, 0];
+    private readonly _guidePathOrder: number[] = [2, 0];
+    /** 本局是否已结束（成功或失败） */
+    private _gameFinished: boolean = false;
     protected onLoad(): void {
         this.gameModel = new GameModel()
         this.gameModel.mGame = this
@@ -97,9 +97,17 @@ export default class GameUI extends cc.Component {
     /** 注册触摸：任意蛇可点；被绿蛇规则挡住时先撞到阻挡点再播蛇头 error 动画 */
     private setupTouchInput(): void {
         this.graphicContainer.on(cc.Node.EventType.TOUCH_START, (event: cc.Event.EventTouch) => {
+            cc.audioEngine.play(RESSpriteFrame.instance.clickAudioClip,false,1)
+            if (this._gameFinished) return;
             const loc = event.getLocation();
             const pathIdx = this.gameManager.getPathIndexAtPoint(loc.x, loc.y);
             if (pathIdx < 0) return;
+            console.log(
+                "[TouchPath]",
+                "pathIdx=", pathIdx,
+                "pathId=", this.gameManager.getPathIdByIndex(pathIdx),
+                "leftMap=", this.gameManager.isPathLeftMap(pathIdx)
+            );
             if (this.gameManager.isPathLeftMap(pathIdx)) return;
             if (this.gameManager.isPathMoving(pathIdx)) return;
             if (this.gameManager.isBlockedFeedbackPlaying()) return;
@@ -112,9 +120,10 @@ export default class GameUI extends cc.Component {
             if (this.gameManager.isGreenPathIndex(pathIdx)) {
                 this.gameManager.markGreenPathClicked();
             }
-            if (pathIdx === this._guidePathOrder[this._guideStep]) {
-                [this.finger, this.finger2, this.finger3][this._guideStep].active = false;
-            }
+            if (this._guideStep === 0 && pathIdx === this._guidePathOrder[0]) {
+                this.finger.active = false;
+                this._guideStep = 1;
+            } 
             this.gameManager.setPathMoving(pathIdx, true);
         }, this);
     }
@@ -419,23 +428,23 @@ export default class GameUI extends cc.Component {
     }
 
     private onPathLeft(pathIdx: number): void {
-        if (pathIdx === 2 && this._guideStep === 0) {
-            // 绿色离开 → 显示finger2，等待点击蓝色
-            this._guideStep = 1;
-            this.finger2.active = true;
-        } else if (pathIdx === 1 && this._guideStep === 1) {
-            // 蓝色离开 → 显示finger3，等待点击黄色
-            this._guideStep = 2;
-            this.finger3.active = true;
-        } else if (pathIdx === 0 && this._guideStep === 2) {
-            // 黄色离开 → 结束
-            this.showResult();
-        }
+        if (this._gameFinished) return;
+        const pathId = this.gameManager.getPathIdByIndex(pathIdx);
+        const snakeType = this.pathIdToSnakeType(pathId);
+        if (snakeType !== SnakeTypeEnum.black) return;
+        this._gameFinished = true;
+        this.showResult();
     }
     showResult(){
         this.maskNode.active = true
         NotifyEffect.NormalShowUI(this.resultNode,RESSpriteFrame.instance.comeOutAudioClip,0.2,true,()=>{
             cc.audioEngine.play(RESSpriteFrame.instance.cherrUpAudioClip,false,1)
+        })
+    }
+    showFail(){
+        this.maskNode.active = true
+        NotifyEffect.NormalShowUI(this.failUI,RESSpriteFrame.instance.comeOutAudioClip,0.2,true,()=>{
+            cc.audioEngine.play(RESSpriteFrame.instance.errorAudioClip,false,1)
         })
     }
     private getRandomInt(min: number, max: number) {

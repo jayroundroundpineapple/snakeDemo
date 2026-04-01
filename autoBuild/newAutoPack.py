@@ -58,7 +58,7 @@ def write_html_file(content, ad_type, gg_url, file_name, zip_name, folder_name, 
             replaced_content = replaced_content.replace(
                 'window["GGURL"]=""',
                 f'window["GGURL"]="{gg_url}";\nfunction u_a(){{mraid.open()}};')
-        if ad_type == "MOLOCO":
+        if ad_type == "Moloco":
             replaced_content = replaced_content.replace(
                 'window["GGURL"]=""',
                 f'window["GGURL"]="{gg_url}";\nwindow.FBPlayableOnCTAClick = () => (typeof FbPlayableAd === "undefined") ? alert("FBPlayableAd.onCTAClick") : FbPlayableAd.onCTAClick();')
