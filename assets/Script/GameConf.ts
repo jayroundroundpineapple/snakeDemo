@@ -3,6 +3,11 @@ export const enum JarType{
     Pink = 1,
     Green = 2
 }
+export const enum SnakeTypeEnum{
+    black = 1,
+    pink = 2,
+    green = 3,
+}
 export class GameConf{
     /**slot列数 */
     public static SlotColumnNum = 3

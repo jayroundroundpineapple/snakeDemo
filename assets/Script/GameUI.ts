@@ -1,8 +1,13 @@
 
 import { GameModel } from "./GameModel";
 import GameManager from "./GameManager";
+import { SnakeTypeEnum } from "./GameConf";
 import RESSpriteFrame from "./RESSpriteFrame";
 import NotifyEffect from "./utils/NotifyEffect";
+import SnakeHead from "./snake/SnakeHead";
+import SnakeBody from "./snake/SnakeBody";
+import SnakeTail from "./snake/SnakeTail";
+import SnakeCorner from "./snake/SnakeCorner";
 
 
 
@@ -326,6 +331,38 @@ export default class GameUI extends cc.Component {
             cornerNode.angle = placement.angle;
             this.fitNodeSizeByScale(cornerNode, cornerSize, cornerSize);
         }
+
+        this.applySnakeSkin(pathIdx, headNode, tailNode, bodyNodes, cornerNodes);
+    }
+
+    /**
+     * 按 levels.json 中的路径 ID（1/2/3…）对应 SnakeTypeEnum，换头/身/尾图
+     */
+    private applySnakeSkin(
+        pathIdx: number,
+        headNode: cc.Node,
+        tailNode: cc.Node,
+        bodyNodes: cc.Node[],
+        cornerNodes: cc.Node[]
+    ): void {
+        const pathId = this.gameManager.getPathIdByIndex(pathIdx);
+        const skin = this.pathIdToSnakeType(pathId);
+
+        headNode.getComponent(SnakeHead)?.setSpriteFrame(skin);
+        tailNode.getComponent(SnakeTail)?.setSpriteFrame(skin);
+        for (let i = 0; i < bodyNodes.length; i++) {
+            bodyNodes[i].getComponent(SnakeBody)?.setSpriteFrame(skin);
+        }
+        for (let i = 0; i < cornerNodes.length; i++) {
+            cornerNodes[i].getComponent(SnakeCorner)?.setSpriteFrame(skin);
+        }
+    }
+
+    private pathIdToSnakeType(pathId: number): SnakeTypeEnum {
+        if (pathId === SnakeTypeEnum.black) return SnakeTypeEnum.black;
+        if (pathId === SnakeTypeEnum.pink) return SnakeTypeEnum.pink;
+        if (pathId === SnakeTypeEnum.green) return SnakeTypeEnum.green;
+        return SnakeTypeEnum.black;
     }
 
     private fitNodeSizeByScale(node: cc.Node, targetW: number, targetH: number): void {

@@ -37,6 +37,8 @@ export default class GameManager extends cc.Component {
     private _pathHeads: Map<number, IPathRowCol> = new Map(); // 路径头部位置 key: 路径ID
     private _arrowPaths: IPathPoint[][] = []; // 所有路径的坐标数组
     private _arrowPathsByRowCol: IPathRowCol[][] = []; // 所有路径的行列索引数组
+    /** 与 _arrowPaths 下标一一对应：关卡里的路径 ID（如 levels.json 中的 1、2、3） */
+    private _pathIdsByIndex: number[] = [];
     private _pathMovingMap: Map<number, boolean> = new Map(); // 路径移动状态
     private _pathLeftMap: Map<number, boolean> = new Map(); // 路径是否离开地图
 
@@ -120,6 +122,7 @@ export default class GameManager extends cc.Component {
         this._pathHeads.clear();
         this._arrowPaths = [];
         this._arrowPathsByRowCol = [];
+        this._pathIdsByIndex = [];
         this._pathMovingMap.clear();
         this._pathLeftMap.clear();
 
@@ -232,6 +235,7 @@ export default class GameManager extends cc.Component {
         this._pathHeads.clear();
         this._arrowPaths = [];
         this._arrowPathsByRowCol = [];
+        this._pathIdsByIndex = [];
         this._pathMovingMap.clear();
         this._pathLeftMap.clear();
 
@@ -359,6 +363,7 @@ export default class GameManager extends cc.Component {
     private buildArrowPathsArray(): void {
         this._arrowPaths = [];
         this._arrowPathsByRowCol = [];
+        this._pathIdsByIndex = [];
 
         // 按路径ID排序
         const sortedPathIds = Array.from(this._pathRowColMap.keys()).sort((a, b) => a - b);
@@ -371,11 +376,22 @@ export default class GameManager extends cc.Component {
             const coordPath = this.convertPathToCoordinates(rowColPath);
             this._arrowPaths.push(coordPath);
             this._arrowPathsByRowCol.push([...rowColPath]);
+            this._pathIdsByIndex.push(pathId);
 
             // 初始化路径状态
             this._pathMovingMap.set(this._arrowPaths.length - 1, false);
             this._pathLeftMap.set(this._arrowPaths.length - 1, false);
         }
+    }
+
+    /**
+     * 路径在数组中的下标对应的关卡路径 ID（与 levels.json 中格子数值绝对值一致，如 1/2/3）
+     */
+    public getPathIdByIndex(pathIdx: number): number {
+        if (pathIdx < 0 || pathIdx >= this._pathIdsByIndex.length) {
+            return 1;
+        }
+        return this._pathIdsByIndex[pathIdx];
     }
 
     /**

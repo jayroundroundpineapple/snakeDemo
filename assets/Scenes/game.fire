@@ -2237,7 +2237,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "hea copy",
+    "_name": "hea",
     "_objFlags": 0,
     "_parent": {
       "__id__": 30
@@ -2331,7 +2331,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "hea copy",
+    "_name": "hea",
     "_objFlags": 0,
     "_parent": {
       "__id__": 30
