@@ -53,9 +53,10 @@ export default class GameManager extends cc.Component {
     /** 阻挡反馈：黄/蓝未解锁时点击，箭头变红并撞到绿色再回弹 */
     private _blockedFeedback: {
         pathIdx: number;
-        phase: "toHit" | "back";
+        phase: "toHit" | "hold" | "back";
         elapsed: number;
         duration: number;
+        holdDuration: number;
         sx: number;
         sy: number;
         hx: number;
@@ -566,6 +567,11 @@ export default class GameManager extends cc.Component {
 
         const hit = this.findRayHitOnGreenPath(pathIdx);
         if (!hit) return;
+        const headDir = this.getDir(path[1].x, path[1].y, path[0].x, path[0].y);
+        // 停留点沿前进方向前推一点，避免视觉上“压重叠”
+        const hitForwardOffset = this._mapRoundGap * 0.6;
+        const holdX = hit.x - headDir.x * hitForwardOffset;
+        const holdY = hit.y + headDir.y * hitForwardOffset;
 
         const origX = path[0].x;
         const origY = path[0].y;
@@ -576,10 +582,11 @@ export default class GameManager extends cc.Component {
             phase: "toHit",
             elapsed: 0,
             duration: 0.22,
+            holdDuration: 0.5,
             sx: origX,
             sy: origY,
-            hx: hit.x,
-            hy: hit.y,
+            hx: holdX,
+            hy: holdY,
             origX,
             origY,
         };
@@ -610,6 +617,15 @@ export default class GameManager extends cc.Component {
                 if (hitCb) {
                     hitCb(f.pathIdx);
                 }
+                f.phase = "hold";
+                f.elapsed = 0;
+            }
+        } else if (f.phase === "hold") {
+            // 碰撞点停留：固定在命中位置保持一段时间，再回退
+            path[0].x = f.hx;
+            path[0].y = f.hy;
+            this.refreshPathGraphicsWithColor(f.pathIdx, this._blockedRedColor);
+            if (f.elapsed >= f.holdDuration) {
                 f.phase = "back";
                 f.elapsed = 0;
             }
