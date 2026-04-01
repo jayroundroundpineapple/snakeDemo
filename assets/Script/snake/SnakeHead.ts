@@ -1,4 +1,5 @@
 import { SnakeTypeEnum } from "../GameConf";
+import RESSpriteFrame from "../RESSpriteFrame";
 
 const { ccclass, property } = cc._decorator;
 
@@ -27,6 +28,18 @@ export default class SnakeHead extends cc.Component {
         anim1.node.active = true
         anim2.node.active = true
         this.node.children[2].active = false
+        let redIcon = this.node.children[3];
+        redIcon.opacity = 0;
+        redIcon.active = true;
+        cc.audioEngine.play(RESSpriteFrame.instance.errorAudioClip,false,1)
+        cc.tween(redIcon)
+        .to(0.1, { opacity: 255 })
+        .delay(0.1)
+        .to(0.2, { opacity: 0 })
+        .call(()=>{
+            redIcon.active = false;
+        })
+        .start();
         if (anim1 && anim2) {
             anim1.play("error");
             anim2.play("error");

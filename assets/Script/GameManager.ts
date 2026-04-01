@@ -802,7 +802,7 @@ export default class GameManager extends cc.Component {
             const dir = this.getDir(path[1].x, path[1].y, path[0].x, path[0].y);
             const mapHalfW = this._mapNode.width * 0.5;
             const mapHalfH = this._mapNode.height * 0.5;
-            const leavePadding = this._mapRoundGap * 15.5;
+            const leavePadding = this._mapRoundGap * 30;
 
             if (dir.x > 0 && head.x >= mapHalfW + leavePadding) {
                 this._pathLeftMap.set(pathIdx, true);
