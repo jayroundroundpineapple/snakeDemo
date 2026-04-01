@@ -1,0 +1,38 @@
+{
+  "ver": "2.3.7",
+  "uuid": "e4024978-f69d-4b36-b1e8-ee5515b59778",
+  "importer": "texture",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "bilinear",
+  "premultiplyAlpha": false,
+  "genMipmaps": false,
+  "packable": true,
+  "width": 500,
+  "height": 500,
+  "platformSettings": {},
+  "subMetas": {
+    "星星炸开_00008": {
+      "ver": "1.0.6",
+      "uuid": "9a498d5c-2d57-4758-9b80-eee653d74ba5",
+      "importer": "sprite-frame",
+      "rawTextureUuid": "e4024978-f69d-4b36-b1e8-ee5515b59778",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 21.5,
+      "offsetY": -4,
+      "trimX": 45,
+      "trimY": 90,
+      "width": 453,
+      "height": 328,
+      "rawWidth": 500,
+      "rawHeight": 500,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}
