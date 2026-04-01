@@ -130,7 +130,7 @@ export default class GameUI extends cc.Component {
                         this.onPathLeft(i);
                     }
                 } else {
-                    this.gameManager.arrowPathMove(1, i);
+                    this.gameManager.arrowPathMove(2, i);
                 }
             }
         }
